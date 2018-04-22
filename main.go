@@ -1,19 +1,20 @@
 package main
 
-import _ "github.com/joho/godotenv/autoload"
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"io"
 	"log"
-	"net/http"
+	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	//"github.com/joho/godotenv/autoload"
 )
 
 // Define the struct of the blocks on the blockchain
@@ -25,9 +26,13 @@ type Block struct {
 	PrevHash  string
 }
 
+// bcServer(blockchain server) handles incoming concurrent Blocks
+var bcServer chan []Block
+
 // Modeling out the blockhain itself, which is just a slice of the Block
 var Blockchain []Block
 
+// SHA256 Hashing
 func calculateHash(block Block) string {
 	record := string(block.Index) + block.Timestamp + string(block.BPM) + block.PrevHash
 	h := sha256.New()
@@ -52,6 +57,7 @@ func generateBlock(oldBlock Block, BPM int) (Block, error) {
 	return newBlock, nil
 }
 
+// make sure block is valid by checking index, and cmpating the hash of the previous block
 func isBlockValid(newBlock, oldBlock Block) bool {
 	if oldBlock.Index+1 != newBlock.Index {
 		return false
@@ -68,13 +74,14 @@ func isBlockValid(newBlock, oldBlock Block) bool {
 	return true
 }
 
+// make sure the chain we're checking is longer than the curent blockchain
 func replaceChain(newBlocks []Block) {
 	if len(newBlocks) > len(Blockchain) {
 		Blockchain = newBlocks
 	}
 }
 
-func run() error {
+/*func run() error {
 	mux := makeMuxRouter()
 	httpAddr := os.Getenv("ADDR")
 	log.Println("Listening on ", os.Getenv("ADDR"))
@@ -151,6 +158,7 @@ func respondWithJSON(w http.ResponseWriter, r *http.Request, code int, payload i
 	w.WriteHeader(code)
 	w.Write(response)
 }
+*/
 
 // Write all the Blockchain functions, web handlers, and the web server in one function
 func main() {
@@ -159,7 +167,83 @@ func main() {
 		log.Fatal(err)
 	}
 
+	bcServer = make(chan []Block)
+
+	// create genesis block
+	t := time.Now()
+	genisisBlock := Block{0, t.String(), 0, "", ""}
+	spew.Dump(genisisBlock)
+	Blockchain = append(Blockchain, genesisBlock)
+
+	// start TCP and serve TCP server
+	server, err := net.Listen("tcp", ":"+os.Getenv("ADDR"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer server.Close()
+
+	for {
+		conn, err := server.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+		go handleConn(conn)
+	}
+}
+
+func handleConn(conn net.Conn) {
+	defer conn.Close()
+
+	// prompt client to enter their resting BPM
+	// scan the client's input from stdin
+	// create new block with this data, using the generateBlock, isBlockValid, and replaceChain functions
+	// put the new blockchain in the channel created to be broadcast to the network
+	// allow the client to enter a new BPM
+	io.WriteString(conn, "Enter a new BPM:")
+
+	scanner := bufio.NewScanner(conn)
+
+	// take in BPM from stdin and add it to blockchain after conduction neccessary validation
 	go func() {
+		for scanner.Scan() {
+			bpm, err := strconv.Atoi(scanner.Text())
+			if err != nil {
+				log.Printf("%v not a number: %v", scanner.Text(), err)
+				continue
+			}
+			newBlock, err := generateBlock(Blockchain[len(Blockchain)-1], bpm)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			if isBlockValid(newBlock, Blockchain[len(Blockchain)-1]) {
+				newBlockchain := append(Blockchain, newBlock)
+				replaceChain(newBlockchain)
+			}
+
+			bcServer <- Blockchain
+			io.WriteString(conn, "\nEnter a new BPM:")
+		}
+	}()
+
+	go func() {
+		for {
+			time.Sleep(30 * time.Second)
+			output, err := json.Marshal(Blockchain)
+			if err != nil {
+				log.Fatal(err)
+			}
+			io.WriteString(conn, string(output))
+		}
+
+	}()
+
+	for _ = range bcServer {
+		spew.Dump(Blockchain)
+	}
+}
+
+/*	go func() {
 		t := time.Now()
 		genesisBlock := Block{0, t.String(), 0, "", ""}
 		spew.Dump(genesisBlock)
@@ -168,3 +252,4 @@ func main() {
 	log.Fatal(run())
 
 }
+*/
