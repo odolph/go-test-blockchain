@@ -171,8 +171,8 @@ func main() {
 
 	// create genesis block
 	t := time.Now()
-	genisisBlock := Block{0, t.String(), 0, "", ""}
-	spew.Dump(genisisBlock)
+	genesisBlock := Block{0, t.String(), 0, "", ""}
+	spew.Dump(genesisBlock)
 	Blockchain = append(Blockchain, genesisBlock)
 
 	// start TCP and serve TCP server
