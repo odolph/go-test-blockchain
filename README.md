@@ -1,8 +1,5 @@
 # go-test-blockchain
 test blockchain written in go lang
-#
-#
-#
 # to run the blockchain in the browser with postman
 - download postman https://www.getpostman.com/
 - open terminal from repository and enter command 
