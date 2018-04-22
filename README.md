@@ -26,9 +26,10 @@ test blockchain written in go lang
 
 ## running from the IPFS branch
 - need a secondary computer or VM instance to simulate the secure file sharing
-- need a test file(superTOPsecret.pdf in this repo, but you can change it) in your directory
+- need a test file(`superTOPsecret.pdf` in this repo, but you can change it) in your directory
 
-###### set up (on both computers)
+###### set up 
+//(on both computers)
 - `$ brew install gnupg`
 - `$ gpg --gen-key` 
 - follow the prompts and save the password that you choose for each 
@@ -45,3 +46,22 @@ test blockchain written in go lang
 - - `$ ipfs init`
 - start the daemon with command
 - - `$ ipfs daemon`
+
+###### Encrypting and Uploding
+- encrypt the sample file with command
+- - `$ gpg --encrypt --recipient "(public key name from 2nd computer)" superTOPsecret.pdf`
+- check your directory with `ls` and you'll see a new encrypted file named `superTOPsecret.pdf.gpg`
+- upload it to ipfs with the command 
+- - `$ ipfs add superTOPsecret.pdf.gpg`
+- you can check if the file is avaliable with commmand
+- - `$ ipfs pin ls`
+
+###### Downloading and Decrypting
+// on second computer
+- download the encrypted file with command 
+- - `$ ipfs get QmYqSCWuzG8Cyo4MFQzqKcC14ct4ybAWyrAc9qzdJaFYTL` (but your hash)
+- decrypt the downloaded file and rename it with command
+- - `$ gpg --decrypt QmYqSCWuzG8Cyo4MFQzqKcC14ct4ybAWyrAc9qzdJaFYTL > superTOPsecret.pdf`
+
+// moment of truth
+- `$ open superTOPsecret.pdf`
