@@ -21,5 +21,5 @@ test blockchain written in go lang
 - - $ go run main.go
 - open another terminal and enter command
 - - $ nc localhost 9000
-(try in multiple terminal sessoins to see the effect)
-(wait 30 seconds and see the updates broadcast to each client)
+- (try in multiple terminal sessoins to see the effect)
+- (wait 30 seconds and see the updates broadcast to each client)
