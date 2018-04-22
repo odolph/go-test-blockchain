@@ -15,3 +15,11 @@ test blockchain written in go lang
 - - eg. {"BPM":67}
 - click Send
 - refresh browser
+
+# running from the Networking branch
+- open terminal from rempository and enter command
+- - $ go run main.go
+- open another terminal and enter command
+- - $ nc localhost 9000
+(try in multiple terminal sessoins to see the effect)
+(wait 30 seconds and see the updates broadcast to each client)
