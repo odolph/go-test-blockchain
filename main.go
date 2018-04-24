@@ -1,4 +1,3 @@
-// TODO - set up environment with gx
 package main
 
 import (
@@ -31,60 +30,19 @@ import (
 	gologging "github.com/whyrusleeping/go-logging"
 )
 
-// Define the struct of the blocks on the blockchain
+// Block represents each 'item' in the blockchain
 type Block struct {
 	Index     int
 	Timestamp string
 	BPM       int
 	Hash      string
 	PrevHash  string
-	Validator string
 }
 
-// Modeling out the blockhain is just a series of validated blocks
+// Blockchain is a series of validated Blocks
 var Blockchain []Block
 
 var mutex = &sync.Mutex{}
-
-func isBlockValid(newBlock, oldBlock Block) bool {
-	if oldBlock.Index+1 != newBlock.Index {
-		return false
-	}
-
-	if oldBlock.Hash != newBlock.PrevHash {
-		return false
-	}
-
-	if calculateHash(newBlock) != newBlock.Hash {
-		return false
-	}
-
-	return true
-}
-
-// calculateHash is a simple SHA256 hashing function
-func calculateHash(s string) string {
-	h := sha256.New()
-	h.Write([]byte(s))
-	hashed := h.Sum(nil)
-	return hex.EncodeToString(hashed)
-}
-
-// create a new block using previous block's hash
-func generateBlock(oldBlock Block, BPM int) Block {
-
-	var newBlock Block
-
-	t := time.Now()
-
-	newBlock.Index = oldBlock.Index + 1
-	newBlock.Timestamp = t.String()
-	newBlock.BPM = BPM
-	newBlock.PrevHash = oldBlock.Hash
-	newBlock.Hash = calculateHash(newBlock)
-
-	return newBlock
-}
 
 // makeBasicHost creates a LibP2P host with a random peer ID listening on the
 // given multiaddress. It will use secio if secio is true.
@@ -138,6 +96,19 @@ func makeBasicHost(listenPort int, secio bool, randseed int64) (host.Host, error
 	return basicHost, nil
 }
 
+func handleStream(s net.Stream) {
+
+	log.Println("Got a new stream!")
+
+	// Create a buffer stream for non blocking read and write.
+	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
+
+	go readData(rw)
+	go writeData(rw)
+
+	// stream 's' will stay open until you close it (or the other side closes it).
+}
+
 func readData(rw *bufio.ReadWriter) {
 
 	for {
@@ -171,18 +142,6 @@ func readData(rw *bufio.ReadWriter) {
 			mutex.Unlock()
 		}
 	}
-}
-func handleStream(s net.Stream) {
-
-	log.Println("Got a new stream!")
-
-	// Create a buffer stream for non blocking read and write.
-	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
-
-	go readData(rw)
-	go writeData(rw)
-
-	// stream 's' will stay open until you close it (or the other side closes it).
 }
 
 func writeData(rw *bufio.ReadWriter) {
@@ -327,4 +286,46 @@ func main() {
 		select {} // hang forever
 
 	}
+}
+
+// make sure block is valid by checking index, and comparing the hash of the previous block
+func isBlockValid(newBlock, oldBlock Block) bool {
+	if oldBlock.Index+1 != newBlock.Index {
+		return false
+	}
+
+	if oldBlock.Hash != newBlock.PrevHash {
+		return false
+	}
+
+	if calculateHash(newBlock) != newBlock.Hash {
+		return false
+	}
+
+	return true
+}
+
+// SHA256 hashing
+func calculateHash(block Block) string {
+	record := strconv.Itoa(block.Index) + block.Timestamp + strconv.Itoa(block.BPM) + block.PrevHash
+	h := sha256.New()
+	h.Write([]byte(record))
+	hashed := h.Sum(nil)
+	return hex.EncodeToString(hashed)
+}
+
+// create a new block using previous block's hash
+func generateBlock(oldBlock Block, BPM int) Block {
+
+	var newBlock Block
+
+	t := time.Now()
+
+	newBlock.Index = oldBlock.Index + 1
+	newBlock.Timestamp = t.String()
+	newBlock.BPM = BPM
+	newBlock.PrevHash = oldBlock.Hash
+	newBlock.Hash = calculateHash(newBlock)
+
+	return newBlock
 }
