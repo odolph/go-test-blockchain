@@ -24,6 +24,7 @@ import (
 	libp2p "github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	host "github.com/libp2p/go-libp2p-host"
+	net "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -67,23 +68,6 @@ func calculateHash(s string) string {
 	h.Write([]byte(s))
 	hashed := h.Sum(nil)
 	return hex.EncodeToString(hashed)
-}
-
-// Creating new blocks
-func generateBlock(oldBlock Block, BPM int, address string) (Block, error) {
-
-	var newBlock Block
-
-	t := time.Now()
-
-	newBlock.Index = oldBlock.Index + 1
-	newBlock.Timestamp = t.String()
-	newBlock.BPM = BPM
-	newBlock.PrevHash = oldBlock.Hash
-	newBlock.Hash = calculateBlockHash(newBlock)
-	newBlock.Validator = address
-
-	return newBlock
 }
 
 // create a new block using previous block's hash
@@ -187,6 +171,18 @@ func readData(rw *bufio.ReadWriter) {
 			mutex.Unlock()
 		}
 	}
+}
+func handleStream(s net.Stream) {
+
+	log.Println("Got a new stream!")
+
+	// Create a buffer stream for non blocking read and write.
+	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
+
+	go readData(rw)
+	go writeData(rw)
+
+	// stream 's' will stay open until you close it (or the other side closes it).
 }
 
 func writeData(rw *bufio.ReadWriter) {
